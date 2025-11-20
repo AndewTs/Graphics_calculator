@@ -24,7 +24,7 @@ _SAFE_DICT = {
 }
 
 class MplWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None):  # Исправлено: изменён init на __init__
         super().__init__(parent)
         self.figure = Figure(figsize=(5, 4))
         self.canvas = FigureCanvas(self.figure)
@@ -83,7 +83,7 @@ class MplWidget(QWidget):
         self.plot_default()
 
     def plot_default(self):
-        x = np.linspace(-2*10, 2*10, 400)
+        x = np.linspace(-2 * np.pi, 2 * np.pi, 400)
         y = np.sin(x)
         # Получаем текущее значение прозрачности из ползунка
         alpha_value = self.chngAlpha.value() / 100.0 
@@ -95,71 +95,71 @@ class MplWidget(QWidget):
 
         linestyles = {'Сплошная': 'solid', 'Прерывистая': 'dashed', 'Точка с запятой': 'dashdot'}
         colors = {'Черный': 'black', 'Красный': 'red', 'Зеленый': 'green'}
-
-        self.figure.clear()
+        
+        self.figure.clear()  # Очищаем предыдущий график
         ax = self.figure.add_subplot(111)
-        # Передаем alpha в функцию plot
-        ax.plot(x, y, linestyle=linestyles[chngdstyle], linewidth=lnwdth, color=colors[chngdcolor], alpha=alpha) 
-        ax.grid(True)
+        
+        # Строим график с выбранными параметрами
+        ax.plot(x, y, 
+                color=colors.get(chngdcolor, 'black'), 
+                linestyle=linestyles.get(chngdstyle, 'solid'),
+                linewidth=lnwdth,
+                alpha=alpha)  
+        
         ax.set_title(title)
-        self.canvas.draw()
-        self.status.setText("")
+        ax.set_xlabel("x")
+        ax.set_ylabel("f(x)")
+        ax.grid(True)
+        self.canvas.draw()  # Обновляем плоскость
 
     def on_plot(self):
-        expr = self.input.text().strip()
-        if not expr:
-            # Если поле ввода пусто, но вызывается on_plot (например, от ползунка)
-            # и предыдущий график был, мы хотим его перерисовать с новой прозрачностью.
-            # Если графика еще нет или была ошибка, то просто выходим.
-            if hasattr(self, '_last_x') and hasattr(self, '_last_y'):
-                alpha_value = self.chngAlpha.value() / 100.0
-                self._draw(self._last_x, self._last_y, title=self._last_title, alpha=alpha_value)
-            else:
-                self.status.setText("Введите выражение функции.")
+        expression_str = self.input.text()
+        if not expression_str:
+            self.plot_default() # Если поле пустое, показываем график по умолчанию
             return
-
-        x = np.linspace(-100, 100, 800)
-        local_dict = {'x': x}
-        local_dict.update(_SAFE_DICT)
-
-        alpha_value = self.chngAlpha.value() / 100.0 # Получаем значение из ползунка
+        
+        # Определяем диапазон для x. Можно сделать его настраиваемым.
+        x = np.linspace(-10, 10, 400) 
 
         try:
-            # Вычисление выражения; используем eval в ограниченном окружении
-            y = eval(expr, {"__builtins__": None}, local_dict)
-
-            # Проверка, что y - это числовой массив
-            if not isinstance(y, (np.ndarray, list, tuple)):
-                self.status.setText("Выражение должно возвращать числовой массив.")
-                return
+            # Создаем локальное пространство имен для eval, включая x
+            local_dict = {'x': x}
+            # Объединяем безопасные функции с локальными переменными
+            plotting_scope = {**_SAFE_DICT, **local_dict}
             
-            # Сохраняем последние данные для перерисовки при изменении ползунка
-            self._last_x = x
-            self._last_y = y
-            self._last_title = f"График: {expr}"
+            # Безопасное вычисление выражения
+            y = eval(expression_str, {"__builtins__": None}, plotting_scope)
+            
+            if not isinstance(y, (np.ndarray, list)):
+                raise ValueError("Выражение должно возвращать массив значений.")
 
-            self._draw(x, y, title=self._last_title, alpha=alpha_value)
-        except Exception as e:
+            # Получаем текущее значение прозрачности из ползунка
+            alpha_value = self.chngAlpha.value() / 100.0
+
+            # Вызываем отрисовку
+            self._draw(x, y, title=f"График: {expression_str}", alpha=alpha_value)
+            self.status.setText("") # Очистить сообщение об ошибке, если всё успешно
+        except (SyntaxError, NameError, TypeError, ValueError) as e:
             self.status.setText(f"Ошибка в выражении: {e}")
-            # Очищаем сохраненные данные, если была ошибка
-            if hasattr(self, '_last_x'):
-                del self._last_x
-            if hasattr(self, '_last_y'):
-                del self._last_y
-            if hasattr(self, '_last_title'):
-                del self._last_title
+        except Exception as e:
+            self.status.setText(f"Неизвестная ошибка: {e}")
+        if '/0' in expression_str:
+            self.status.setText(f"Деление на 0")
+            self.plot_default() # Если делим на 0, показываем график по умолчанию
+            return
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Графический калькулятор")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle("Построитель графиков функций")        
+        self.mpl_widget = MplWidget()
+        self.setCentralWidget(self.mpl_widget)
 
-        self.mplwidget = MplWidget()
-        self.setCentralWidget(self.mplwidget)
-
-if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+    main_window = MainWindow()
+    main_window.show()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
