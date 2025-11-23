@@ -1,53 +1,59 @@
 import sys
 import numpy as np
-# sympy по-прежнему импортирован, но не используется в этом фрагменте
-import sympy as sp 
+import sympy as sp # Символьный анализ может быть полезен, но не используется напрямую для определения асимптот в этой версии.
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QLabel, QComboBox, QSlider
+    QLineEdit, QPushButton, QLabel, QComboBox, QSlider, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-# Безопасное пространство имён для eval
+# Безопасное пространство имён для eval - расширено для большей функциональности
 _SAFE_DICT = {
-    'sin': np.sin, 'cos': np.cos, 'tan': np.tan,
+    'sin': np.sin, 'cos': np.cos, 'tan': np.tan, 'cot': lambda x: 1/np.tan(x),
     'arcsin': np.arcsin, 'arccos': np.arccos, 'arctan': np.arctan,
     'sinh': np.sinh, 'cosh': np.cosh, 'tanh': np.tanh,
-    'exp': np.exp, 'log': np.log, 'log10': np.log10, 'sqrt': np.sqrt,
+    'exp': np.exp, 'log': np.log, 'log10': np.log10, 'log2': np.log2,
+    'sqrt': np.sqrt, 'cbrt': np.cbrt, # Кубический корень
     'abs': np.abs, 'pi': np.pi, 'e': np.e,
-    'floor': np.floor, 'ceil': np.ceil,
-    'np': np,
+    'floor': np.floor, 'ceil': np.ceil, 'round': np.round,
+    'sign': np.sign,
+    'np': np, # Доступ к модулю numpy
 }
 
 class MplWidget(QWidget):
-    def __init__(self, parent=None):  # Исправлено: изменён init на __init__
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.figure = Figure(figsize=(5, 4))
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
+        self.ax = self.figure.add_subplot(111) # Добавляем subplot сразу
 
-        # Поле ввода и кнопка
+        # Поле ввода функции
         self.input = QLineEdit()
-        self.input.setPlaceholderText("Введите функцию от x, например: sin(x) или x**2")
+        self.input.setPlaceholderText("Введите функцию от x, например: 1/(x-2) или tan(x)")
         self.btn = QPushButton("Построить")
         self.status = QLabel("")  # для сообщений об ошибке
 
-        self.changecolor = QComboBox()  # выбираем цвет
-        self.changecolor.addItem("Черный")
+        # Выбор цвета
+        self.changecolor = QComboBox()
+        self.changecolor.addItem("Синий")
         self.changecolor.addItem("Красный")
         self.changecolor.addItem("Зеленый")
+        self.changecolor.addItem("Черный") # Добавил Черный
 
-        self.changestyle = QComboBox()  # выбираем стиль
+        # Выбор стиля линии
+        self.changestyle = QComboBox()
         self.changestyle.addItem("Сплошная")
-        self.changestyle.addItem("Прерывистая")
-        self.changestyle.addItem("Точка с запятой")
+        self.changestyle.addItem("Пунктирная")
+        self.changestyle.addItem("Точка-штрих")
+        self.changestyle.addItem("Точечная") # Добавил новый стиль
 
-        # Ползунок для регулирования прозрачности 
-        self.chngAlpha = QSlider(Qt.Orientation.Horizontal) 
+        # Ползунок для регулирования прозрачности
+        self.chngAlpha = QSlider(Qt.Orientation.Horizontal)
         self.chngAlpha.setMinimum(0)
         self.chngAlpha.setMaximum(100) # Максимум 100 для удобства (0.00-1.00)
         self.chngAlpha.setValue(100) # Начальное значение - полностью непрозрачный (1.0)
@@ -64,102 +70,110 @@ class MplWidget(QWidget):
         controls.addWidget(self.btn)
         controls.addWidget(self.changecolor)
         controls.addWidget(self.changestyle)
-        
+
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addLayout(controls)
-        layout.addLayout(alphaLayout) 
+        layout.addLayout(alphaLayout)
         layout.addWidget(self.canvas)
         layout.addWidget(self.status)
         self.setLayout(layout)
 
+        # Подключение сигналов
         self.btn.clicked.connect(self.on_plot)
-        # Подключаем сигнал ползунка к on_plot для обновления графика
-        self.chngAlpha.valueChanged.connect(self.on_plot) 
-        self.changecolor.currentTextChanged.connect(self.on_plot) # Обновление при смене цвета
-        self.changestyle.currentTextChanged.connect(self.on_plot) # Обновление при смене стиля
+        self.chngAlpha.valueChanged.connect(self.on_plot)
+        self.changecolor.currentTextChanged.connect(self.on_plot)
+        self.changestyle.currentTextChanged.connect(self.on_plot)
 
         # Начальный график
-        self.plot_default()
-
-    def plot_default(self):
-        x = np.linspace(-2 * np.pi, 2 * np.pi, 400)
-        y = np.sin(x)
-        # Получаем текущее значение прозрачности из ползунка
-        alpha_value = self.chngAlpha.value() / 100.0 
-        self._draw(x, y, title="Исходный график: sin(x)", alpha=alpha_value)
-
-    def _draw(self, x, y, lnwdth=1.5, title="", alpha=1.0): # Добавляем параметр alpha
-        chngdstyle = self.changestyle.currentText()
-        chngdcolor = self.changecolor.currentText()
-
-        linestyles = {'Сплошная': 'solid', 'Прерывистая': 'dashed', 'Точка с запятой': 'dashdot'}
-        colors = {'Черный': 'black', 'Красный': 'red', 'Зеленый': 'green'}
-        
-        self.figure.clear()  # Очищаем предыдущий график
-        ax = self.figure.add_subplot(111)
-        
-        # Строим график с выбранными параметрами
-        ax.plot(x, y, 
-                color=colors.get(chngdcolor, 'black'), 
-                linestyle=linestyles.get(chngdstyle, 'solid'),
-                linewidth=lnwdth,
-                alpha=alpha)  
-        
-        ax.set_title(title)
-        ax.set_xlabel("x")
-        ax.set_ylabel("f(x)")
-        ax.grid(True)
-        self.canvas.draw()  # Обновляем плоскость
+        self.input.setText("sin(x)")
+        self.on_plot() # Вызываем построение при запуске для заданной функции
 
     def on_plot(self):
-        expression_str = self.input.text()
-        if not expression_str:
-            self.plot_default() # Если поле пустое, показываем график по умолчанию
+        expression = self.input.text()
+        x_min = -10
+        x_max = 10
+        num_points = 1000
+        
+        x = np.linspace(x_min, x_max, num_points)
+        y = np.zeros_like(x, dtype=float)
+        
+        try:
+            # Используем vectorize для более быстрого вычисления функции для всего массива
+            # Создаем "безопасную" функцию, которая возвращает NaN при ошибках
+            def safe_eval(expr, val, safe_dict):
+                try:
+                    return eval(expr, {"x": val, **safe_dict})
+                except (ZeroDivisionError, ValueError, OverflowError): # Обрабатываем типичные ошибки
+                    return np.nan
+            
+            # Векторизуем safe_eval для применения ко всему массиву x
+            vectorized_func = np.vectorize(lambda val: safe_eval(expression, val, _SAFE_DICT))
+            y = vectorized_func(x)
+
+            self.status.setText("") # Очищаем статус об ошибке, если успешно
+            
+        except Exception as e:
+            self.status.setText(f"Ошибка в выражении или при вычислении: {e}")
             return
         
-        # Определяем диапазон для x. Можно сделать его настраиваемым.
-        x = np.linspace(-10, 10, 400) 
+        alpha_value = self.chngAlpha.value() / 100.0 # Получаем значение для alphas
+        
+        # Передаем y_min и y_max в функцию отрисовки для установки пределов y
+        self._draw(x, y, 
+                   title=f"График: {expression}", 
+                   alpha=alpha_value,
+                   y_min=-10, y_max=10)
 
-        try:
-            # Создаем локальное пространство имен для eval, включая x
-            local_dict = {'x': x}
-            # Объединяем безопасные функции с локальными переменными
-            plotting_scope = {**_SAFE_DICT, **local_dict}
-            
-            # Безопасное вычисление выражения
-            y = eval(expression_str, {"__builtins__": None}, plotting_scope)
-            
-            if not isinstance(y, (np.ndarray, list)):
-                raise ValueError("Выражение должно возвращать массив значений.")
+    def _draw(self, x, y, lnwdth=1.5, title="", alpha=1.0, y_min=-10, y_max=10):
+        # Очищаем предыдущий график
+        self.ax.clear()
 
-            # Получаем текущее значение прозрачности из ползунка
-            alpha_value = self.chngAlpha.value() / 100.0
+        chngdstyle_map = {
+            "Сплошная": '-',
+            "Пунктирная": '--',
+            "Точка-штрих": '-.',
+            "Точечная": ':'
+        }
+        chngdcolor_map = {
+            "Синий": 'blue',
+            "Красный": 'red',
+            "Зеленый": 'green',
+            "Черный": 'black'
+        }
 
-            # Вызываем отрисовку
-            self._draw(x, y, title=f"График: {expression_str}", alpha=alpha_value)
-            self.status.setText("") # Очистить сообщение об ошибке, если всё успешно
-        except (SyntaxError, NameError, TypeError, ValueError) as e:
-            self.status.setText(f"Ошибка в выражении: {e}")
-        except Exception as e:
-            self.status.setText(f"Неизвестная ошибка: {e}")
-        if '/0' in expression_str:
-            self.status.setText(f"Деление на 0")
-            self.plot_default() # Если делим на 0, показываем график по умолчанию
-            return
+        chngdstyle = chngdstyle_map.get(self.changestyle.currentText(), '-')
+        chngdcolor = chngdcolor_map.get(self.changecolor.currentText(), 'blue')
+
+        # Заменяем значения, которые выходят за пределы y_min/y_max, на NaN.
+        y_clipped = np.copy(y)
+        y_clipped[y_clipped < y_min] = np.nan
+        y_clipped[y_clipped > y_max] = np.nan
+        
+        # Теперь рисуем график с использованием np.nan
+        self.ax.plot(x, y_clipped, color=chngdcolor, linestyle=chngdstyle,
+                     linewidth=lnwdth, alpha=alpha, label=title)
+
+        self.ax.set_title(title)
+        self.ax.set_xlabel('x')
+        self.ax.set_ylabel('y')
+        self.ax.grid(True)
+        self.ax.legend()
+        
+        self.ax.set_xlim(x[0], x[-1])
+        self.ax.set_ylim(y_min, y_max) # Устанавливаем пределы Y
+        self.figure.tight_layout() # Автоматическая настройка полей
+        self.canvas.draw()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Построитель графиков функций")        
+        self.setWindowTitle("Построитель графиков функций")
         self.mpl_widget = MplWidget()
         self.setCentralWidget(self.mpl_widget)
 
-def main():
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec())
-
-if __name__ == "__main__":
-    main()
