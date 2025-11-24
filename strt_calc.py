@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-import sympy as sp # Символьный анализ может быть полезен, но не используется напрямую для определения асимптот в этой версии.
+import sympy as sp 
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -25,7 +25,7 @@ _SAFE_DICT = {
 }
 
 class MplWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None): 
         super().__init__(parent)
         self.figure = Figure(figsize=(5, 4))
         self.canvas = FigureCanvas(self.figure)
@@ -61,6 +61,42 @@ class MplWidget(QWidget):
         self.chngAlpha.setTickInterval(10)
         self.alphaLabel = QLabel("Прозрачность:")
 
+        # SpinBox для диапазона X
+        self.x_min_spin = QDoubleSpinBox()
+        self.x_min_spin.setRange(-1000.0, 1000.0)
+        self.x_min_spin.setValue(-10.0)
+        self.x_max_spin = QDoubleSpinBox()
+        self.x_max_spin.setRange(-1000.0, 1000.0)
+        self.x_max_spin.setValue(10.0)
+        self.x_points_spin = QDoubleSpinBox() # Добавим количество точек
+        self.x_points_spin.setRange(100, 10000)
+        self.x_points_spin.setValue(1000)
+        self.x_points_spin.setSingleStep(500)
+        self.x_points_spin.setPrefix("Точек:")
+        
+        # SpinBox для диапазона Y
+        self.y_min_spin = QDoubleSpinBox()
+        self.y_min_spin.setRange(-1000.0, 1000.0)
+        self.y_min_spin.setValue(-10.0)
+        self.y_max_spin = QDoubleSpinBox()
+        self.y_max_spin.setRange(-1000.0, 1000.0)
+        self.y_max_spin.setValue(10.0)
+
+        # Компоновка для диапазона X
+        x_range_layout = QHBoxLayout()
+        x_range_layout.addWidget(QLabel("X от:"))
+        x_range_layout.addWidget(self.x_min_spin)
+        x_range_layout.addWidget(QLabel("до:"))
+        x_range_layout.addWidget(self.x_max_spin)
+        x_range_layout.addWidget(self.x_points_spin)
+
+        # Компоновка для диапазона Y
+        y_range_layout = QHBoxLayout()
+        y_range_layout.addWidget(QLabel("Y от:"))
+        y_range_layout.addWidget(self.y_min_spin)
+        y_range_layout.addWidget(QLabel("до:"))
+        y_range_layout.addWidget(self.y_max_spin)
+
         alphaLayout = QHBoxLayout()
         alphaLayout.addWidget(self.alphaLabel)
         alphaLayout.addWidget(self.chngAlpha)
@@ -73,6 +109,8 @@ class MplWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
+        layout.addLayout(x_range_layout)
+        layout.addLayout(y_range_layout)
         layout.addLayout(controls)
         layout.addLayout(alphaLayout)
         layout.addWidget(self.canvas)
@@ -84,17 +122,27 @@ class MplWidget(QWidget):
         self.chngAlpha.valueChanged.connect(self.on_plot)
         self.changecolor.currentTextChanged.connect(self.on_plot)
         self.changestyle.currentTextChanged.connect(self.on_plot)
+        self.x_min_spin.valueChanged.connect(self.on_plot)
+        self.x_max_spin.valueChanged.connect(self.on_plot)
+        self.y_min_spin.valueChanged.connect(self.on_plot)
+        self.y_max_spin.valueChanged.connect(self.on_plot)
+        self.x_points_spin.valueChanged.connect(self.on_plot)
 
         # Начальный график
-        self.input.setText("sin(x)")
+        self.input.setText("1/x") # Демонстрация корректной отрисовки асимптот
         self.on_plot() # Вызываем построение при запуске для заданной функции
 
     def on_plot(self):
         expression = self.input.text()
-        x_min = -10
-        x_max = 10
-        num_points = 1000
+        x_min = self.x_min_spin.value()
+        x_max = self.x_max_spin.value()
+        num_points = int(self.x_points_spin.value())
         
+        # Проверка на корректность диапазона
+        if x_min >= x_max:
+            self.status.setText("Ошибка: X_min должен быть меньше X_max.")
+            return
+
         x = np.linspace(x_min, x_max, num_points)
         y = np.zeros_like(x, dtype=float)
         
@@ -123,7 +171,7 @@ class MplWidget(QWidget):
         self._draw(x, y, 
                    title=f"График: {expression}", 
                    alpha=alpha_value,
-                   y_min=-10, y_max=10)
+                   y_min=self.y_min_spin.value(),             y_max=self.y_max_spin.value())
 
     def _draw(self, x, y, lnwdth=1.5, title="", alpha=1.0, y_min=-10, y_max=10):
         # Очищаем предыдущий график
@@ -162,7 +210,7 @@ class MplWidget(QWidget):
         
         self.ax.set_xlim(x[0], x[-1])
         self.ax.set_ylim(y_min, y_max) # Устанавливаем пределы Y
-        self.figure.tight_layout() # Автоматическая настройка полей
+        self.figure.tight_layout()
         self.canvas.draw()
 
 class MainWindow(QMainWindow):
