@@ -11,9 +11,9 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from database_module import DatabaseModule
-from analysis_module import AnalysisModule
-from dialogs import AnalysisDialog
+from src.database_module import DatabaseModule
+from src.analysis_module import AnalysisModule
+from src.dialogs import AnalysisDialog
 
 # Безопасное пространство имён для eval - расширено для большей функциональности
 _SAFE_DICT = {
@@ -485,3 +485,5 @@ class MplWidget(QWidget):
         self.current_functions.clear()
         self.function_list.clear()
         self.redraw_all()
+
+    

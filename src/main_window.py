@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QAction
 
-from mpl_widget import MplWidget
-from dialogs import HistoryDialog
+from src.mpl_widget import MplWidget
+from src.dialogs import HistoryDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
