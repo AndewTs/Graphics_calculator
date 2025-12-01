@@ -486,4 +486,51 @@ class MplWidget(QWidget):
         self.function_list.clear()
         self.redraw_all()
 
+    def on_plot_silent(self):
+        """Построение графика без сообщений об ошибках (для пакетной обработки)"""
+        expression = self.input.text().strip()
+        if not expression:
+            return False
+            
+        try:
+            # Создаем словарь с информацией о функции
+            function_info = {
+                'expression': expression,
+                'color': self.current_color,
+                'style': self.current_style,
+                'alpha': self.current_alpha
+            }
+            
+            # Проверяем, можно ли вычислить функцию
+            x_min = self.x_min_spin.value()
+            x_max = self.x_max_spin.value()
+            num_points = 10  # Минимальное количество точек для проверки
+            x_test = np.linspace(x_min, x_max, num_points)
+            
+            try:
+                y_test = self.evaluate_function(expression, x_test)
+                # Если есть хотя бы одно не-NaN значение, функция считается валидной
+                if not np.all(np.isnan(y_test)):
+                    # Добавляем функцию в список
+                    self.current_functions.append(function_info)
+                    
+                    # Добавляем в список отображения
+                    display_text = f"{expression} (цвет: {self.get_color_name(self.current_color)}, стиль: {self.current_style})"
+                    self.function_list.addItem(display_text)
+                    
+                    # Сохраняем в историю
+                    self.database_module.save_query(expression)
+                    
+                    # Перерисовываем все графики
+                    self.redraw_all()
+                    
+                    return True
+            except:
+                pass
+                
+            return False
+            
+        except Exception:
+            return False
+
     

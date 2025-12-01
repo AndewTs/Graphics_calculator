@@ -5,6 +5,7 @@ from PyQt6.QtGui import QAction
 
 from src.mpl_widget import MplWidget
 from src.dialogs import HistoryDialog
+from src.file_module import FileModule
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -56,60 +57,56 @@ class MainWindow(QMainWindow):
         history_menu.addAction(history_action)
         
     def load_functions(self):
-        # Открываем диалоговое окно для выбора файла
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Загрузить функции", "", 
-            "Text Files (*.txt);;CSV Files (*.csv)"
-        )
-        # Открываем файл и читаем функции
-        if file_path:
-            try:
-                functions = []
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    for line in file:
-                        func = line.strip()
-                        if func and not func.startswith('#'):
-                            functions.append(func)
+        """Загружает функции из файла и добавляет их на график"""
+        try:
+            functions = FileModule.load_functions(self)
+            if functions:
+                # Очищаем текущие графики
+                self.mpl_widget.clear_all_functions()
                 
-                # Очищаем текущие графики и строим новые из файла
-                self.mpl_widget.current_functions.clear()
-                self.mpl_widget.function_list.clear()
-                
+                # Добавляем каждую функцию
+                success_count = 0
                 for func in functions:
-                    self.mpl_widget.on_plot()
+                    try:
+                        # Устанавливаем функцию в поле ввода
+                        self.mpl_widget.input.setText(func)
+                        # Пытаемся построить график
+                        if self.mpl_widget.on_plot_silent():
+                            success_count += 1
+                    except Exception as e:
+                        print(f"Ошибка при построении функции {func}: {e}")
+                        continue
+                
+                # Показываем результат
+                if success_count > 0:
+                    QMessageBox.information(self, "Успех", 
+                                          f"Успешно загружено {success_count} из {len(functions)} функций")
+                else:
+                    QMessageBox.warning(self, "Предупреждение", 
+                                      "Не удалось загрузить ни одну функцию")
                     
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить функции: {str(e)}")
-                
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить функции: {str(e)}")
+    
     def save_functions(self):
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Сохранить функции", "", 
-            "Text Files (*.txt);;CSV Files (*.csv)"
-        )
-        # Уже сохраняем функции
-        if file_path:
-            try:
-                with open(file_path, 'w', encoding='utf-8') as file:
-                    for func in self.mpl_widget.current_functions:
-                        file.write(func + '\n')
-                # Выводим QMessageBox для сообщения об успехе или ошибке
-                QMessageBox.information(self, "Успех", "Функции успешно сохранены")
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить функции: {str(e)}")
+        """Сохраняет текущие функции в файл"""
+        try:
+            # Получаем список функций из виджета
+            functions = []
+            for func_info in self.mpl_widget.current_functions:
+                functions.append(func_info['expression'])
+            
+            FileModule.save_functions(self, functions)
                 
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить функции: {str(e)}")
+    
     def export_image(self):
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Сохранить изображение", "",
-            "PNG Files (*.png);;JPEG Files (*.jpg);;PDF Files (*.pdf);;SVG Files (*.svg)"
-        )
-        
-        if file_path:
-            try:
-                # С помощью встроенной matplotlib функции сохраняем изображение функции
-                self.mpl_widget.figure.savefig(file_path, dpi=300, bbox_inches='tight')
-                QMessageBox.information(self, "Успех", "Изображение успешно сохранено")
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить изображение: {str(e)}")
+        """Экспортирует текущий график в файл изображения"""
+        try:
+            FileModule.export_plot(self, self.mpl_widget.canvas)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось экспортировать изображение: {str(e)}")
                 
     def show_history(self):
         try:
