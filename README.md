@@ -76,3 +76,28 @@ My first project in 2025 year in Yandex Liceum.
  - **Ctrl + S** --- сохранить введённые функции в файл  
  - **Ctrl + A** --- анализ функции  
  - **Ctrl + H** --- посмотреть историю запросов
+
+# Инструкция по запуску
+
+* Python 3.11 должен быть уже установлен
+
+* Для первого запуска необходим доступ в интернет (для утсановки зависимостей)
+
+### 1. Клонирование репозитория  git:
+
+```
+git clone https://github.com/AndewTs/Graphics_calculator.git
+cd Graphics_calculator
+```
+
+### 2. Установка зависимостей:
+
+```
+pip install -r requirements.txt
+```
+
+### 3. Запуск:
+
+```
+python main.py
+```
