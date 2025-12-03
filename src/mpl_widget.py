@@ -15,7 +15,7 @@ from src.database_module import DatabaseModule
 from src.analysis_module import AnalysisModule
 from src.dialogs import AnalysisDialog
 
-# Безопасное пространство имён для eval - расширено для большей функциональности
+# Безопасное пространство имён для eval
 _SAFE_DICT = {
     'sin': np.sin, 'cos': np.cos, 'tan': np.tan, 'cot': lambda x: 1/np.tan(x),
     'arcsin': np.arcsin, 'arccos': np.arccos, 'arctan': np.arctan,
@@ -50,7 +50,7 @@ class MplWidget(QWidget):
         # Создаем основную компоновку
         main_layout = QVBoxLayout()
         
-        # ВЕРХНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ
+        # вЕРХНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ
         control_panel = QWidget()
         control_layout = QVBoxLayout()
         control_panel.setLayout(control_layout)
@@ -172,7 +172,7 @@ class MplWidget(QWidget):
         # Добавляем панель управления в основную компоновку
         main_layout.addWidget(control_panel)
         
-        # НИЖНЯЯ ПАНЕЛЬ - ГРАФИК
+        # Нижняя панель - график
         graph_panel = QWidget()
         graph_layout = QVBoxLayout()
         graph_panel.setLayout(graph_layout)
@@ -278,11 +278,7 @@ class MplWidget(QWidget):
         
         # Сохраняем в историю
         self.database_module.save_query(expression)
-        
-        # Перерисовываем все графики
         self.redraw_all()
-        
-        # Очищаем поле ввода
         self.input.clear()
 
     def get_color_name(self, color_value):
@@ -335,7 +331,6 @@ class MplWidget(QWidget):
                 self.status.setText(f"Ошибка при построении {expression}: {e}")
                 # Удаляем проблемную функцию из списка
                 self.current_functions.pop(i)
-                # Удаляем из списка отображения
                 self.function_list.takeItem(i)
                 return
         
@@ -353,6 +348,7 @@ class MplWidget(QWidget):
 
     def evaluate_function(self, expression, x):
         """Вычисляет значения функции для массива x"""
+        # Отдельная функция в классе для удобства использования
         def safe_eval(expr, val, safe_dict):
             try:
                 return eval(expr, {"x": val, **safe_dict})
@@ -459,8 +455,6 @@ class MplWidget(QWidget):
                 expression = self.current_functions[index]['expression']
                 display_text = f"{expression} (цвет: {self.get_color_name(self.current_color)}, стиль: {self.current_style})"
                 item.setText(display_text)
-        
-        # Перерисовываем графики
         self.redraw_all()
 
     def remove_selected_function(self):
@@ -476,8 +470,6 @@ class MplWidget(QWidget):
             if 0 <= index < len(self.current_functions):
                 self.current_functions.pop(index)
                 self.function_list.takeItem(index)
-        
-        # Перерисовываем графики
         self.redraw_all()
 
     def clear_all_functions(self):
@@ -520,8 +512,6 @@ class MplWidget(QWidget):
                     
                     # Сохраняем в историю
                     self.database_module.save_query(expression)
-                    
-                    # Перерисовываем все графики
                     self.redraw_all()
                     
                     return True

@@ -122,7 +122,7 @@ class AnalysisModule:
         except:
             result += "Не удалось вычислить интеграл\n"
             
-        # Определенный интеграл на интервале [-5, 5] для примера
+        # Определенный интеграл на интервале [-5, 5]
         result += "\nОПРЕДЕЛЕННЫЙ ИНТЕГРАЛ:\n"
         try:
             definite_integral = integrate(expr, (self.x, -5, 5))
@@ -180,9 +180,8 @@ class AnalysisModule:
         
         # Находим точки, где логарифмы не определены
         try:
-            from sympy import log
             # Ищем все логарифмы в выражении
-            logs = expr.atoms(log)
+            logs = expr.atoms(sp.log)
             for log_func in logs:
                 # Аргумент логарифма должен быть > 0
                 arg = log_func.args[0]
@@ -200,9 +199,8 @@ class AnalysisModule:
         
         # Находим точки, где корни четной степени не определены
         try:
-            from sympy import sqrt, Pow
             # Ищем корни четной степени
-            for power in expr.atoms(Pow):
+            for power in expr.atoms(sp.Pow):
                 base, exp = power.as_base_exp()
                 if exp.is_rational and not exp.is_integer:
                     # Для дробных степеней с четным знаменателем
@@ -219,6 +217,4 @@ class AnalysisModule:
                             pass
         except:
             pass
-        
-        # Убираем дубликаты
         return list(set(discontinuities))

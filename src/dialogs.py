@@ -24,8 +24,8 @@ class AnalysisDialog(QDialog):
         self.setLayout(layout)
 
 class HistoryDialog(QDialog):
-    def __init__(self, parent=None, history_data=None):
-        super().__init__(parent)
+    def __init__(self, history_data=None):
+        super().__init__()
         self.setWindowTitle("История запросов")
         self.setModal(True)
         self.resize(500, 400)

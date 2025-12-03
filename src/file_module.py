@@ -94,11 +94,9 @@ class FileModule:
                     file.write("# Комментарии начинаются с символа #\n\n")
                     
                     for func in functions:
-                        if hasattr(func, 'expression'):
-                            # Если переданы объекты функций
+                        if isinstance(func, dict) and 'expression' in func:
                             file.write(f"{func['expression']}\n")
                         else:
-                            # Если переданы простые строки
                             file.write(f"{func}\n")
                 
                 QMessageBox.information(parent, "Успех", f"Функции сохранены в файл: {file_path}")

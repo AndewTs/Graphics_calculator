@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu('Файл')
         
         load_action = QAction('Загрузить функции...', self)
-        # Таким образом задаем хоткеи
+        # Задаем хоткеи ко всем действия так
         load_action.setShortcut('Ctrl+O')
         load_action.triggered.connect(self.load_functions)
         file_menu.addAction(load_action)
