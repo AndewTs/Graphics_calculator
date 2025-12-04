@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QFileDialog, QMessageBox, QDialog
+    QMainWindow, QMessageBox, QDialog, 
 )
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIcon
 
 from src.mpl_widget import MplWidget
 from src.dialogs import HistoryDialog
@@ -16,7 +16,6 @@ class MainWindow(QMainWindow):
         self.mpl_widget = MplWidget()
         self.setCentralWidget(self.mpl_widget)
         
-        # Создание меню
         self.create_menu()
         
     def create_menu(self):
